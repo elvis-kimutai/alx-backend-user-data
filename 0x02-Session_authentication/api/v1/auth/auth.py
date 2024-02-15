@@ -1,29 +1,48 @@
 #!/usr/bin/env python3
-"""Authentication module for API"""
+""" authentication module"""
+import os
 from flask import request
-from typing import List, TypeVar, Optional
+
+from typing import (
+    List,
+    TypeVar,
+    Union
+)
 
 
 class Auth:
-    """
-    Authentication class
-    """
+    """API authentication class"""
     def require_auth(self, path: str, excluded_paths: List[str]) -> bool:
-        """ Check if authentication is required to access path"""
-        if not excluded_paths or not path:
+        """Needs authentication on every request"""
+        if (
+            path is None
+            or excluded_paths is None
+            or len(excluded_paths) == 0
+        ):
             return True
-        path = path if path.endswith('/') else path + '/'
-        for excluded_path in excluded_paths:
-            if path.startswith(excluded_path.strip("*")):
-                return False
+        for url in excluded_paths:
+            if url.endswith('*'):
+                if url[:-1] in path:
+                    return False
+            else:
+                if path in url or path + '/' in url:
+                    return False
         return True
 
-    def authorization_header(self, request=None) -> Optional[str]:
-        """ Check for authorization header in request"""
-        if not request or 'Authorization' not in request.headers:
+    def authorization_header(self, request=None) -> Union[str, None]:
+        """Extract authorization header"""
+        auth = request.headers.get('Authorization', None) if request else None
+        if request is None or auth is None:
             return None
-        return request.headers.get('Authorization')
+        return auth
 
-    def current_user(self, request=None) -> TypeVar('User'):
-        """ Returns user object"""
+    def current_user(self, request=None) -> Union[TypeVar('User'), None]:
+        """holds the current authenticated logged in user"""
         return None
+
+    def session_cookie(self, request=None) -> Union[str, None]:
+        """get a cookie value from a request object"""
+        if request is None:
+            return None
+        cookie_name = os.getenv('SESSION_NAME')
+        return request.cookies.get(cookie_name)
